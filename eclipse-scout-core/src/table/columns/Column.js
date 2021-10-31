@@ -217,12 +217,27 @@ export default class Column {
 
   buildCellForAggregateRow(aggregateRow) {
     let cell;
-    if (this.grouped) {
+    let isGroupingStyleTitle = this.table.groupingStyle === Table.GroupingStyle.TITLE;
+    if (isGroupingStyleTitle) {
+      // title style grouping cell
+      let visibleColumns = this.table.visibleColumns();
+      if (visibleColumns.length > 0 && this === visibleColumns[0]) {
+        cell = this.createAggrGroupCellTitle(visibleColumns, aggregateRow.nextRow);
+      }
+    } else if (this.grouped) {
+      // top/bottom style grouping cell
       let refRow = (this.table.groupingStyle === Table.GroupingStyle.TOP ? aggregateRow.nextRow : aggregateRow.prevRow);
       cell = this.createAggrGroupCell(refRow);
-    } else {
+    }
+
+    if (!cell) {
+      // value cell (empty or grouping value)
       let aggregateValue = aggregateRow.contents[this.table.columns.indexOf(this)];
       cell = this.createAggrValueCell(aggregateValue);
+      if (isGroupingStyleTitle) {
+        cell.flowsLeft = this.horizontalAlignment > 0;
+        cell.cssClass += ' table-aggregate-cell-title';
+      }
     }
     return this.buildCell(cell, {});
   }
@@ -238,8 +253,7 @@ export default class Column {
     }
 
     let text = this._text(cell);
-    let iconId = cell.iconId;
-    let icon = this._icon(iconId, !!text) || '';
+    let icon = this._icon(cell.iconId, !!text) || '';
     let cssClass = this._cellCssClass(cell, tableNodeColumn);
     let style = this._cellStyle(cell, tableNodeColumn, rowPadding);
 
@@ -253,7 +267,11 @@ export default class Column {
       content = '&nbsp;';
       cssClass = strings.join(' ', cssClass, 'empty');
     } else {
-      content = icon + text;
+      if (cell.flowsLeft) {
+        content = text + icon;
+      } else {
+        content = icon + text;
+      }
     }
 
     if (tableNodeColumn && row._expandable) {
@@ -668,6 +686,21 @@ export default class Column {
       return;
     }
     this.table.resizeColumn(this, width);
+  }
+
+  createAggrGroupCellTitle(visibleColumns, row) {
+    let groupingTexts = visibleColumns
+      .filter(c => c.grouped)
+      .map(c => c.cellTextForGrouping(row));
+    let title = strings.join(' / ', groupingTexts);
+    let cell = this.initCell(scout.create('Cell', {
+      value: null, // do not pass a value because it would be parsed and must therefore be valid
+      text: null, // do not set text here because some columns (e.g. IconColumn) modify the text during initCell. Instead apply the text afterwards
+      horizontalAlignment: -1,
+      cssClass: 'table-aggregate-cell table-aggregate-cell-title'
+    }));
+    cell.setText(title);
+    return cell;
   }
 
   createAggrGroupCell(row) {
