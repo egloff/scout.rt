@@ -16,9 +16,8 @@ on:
 
 jobs:
   build:
-
-    runs-on:  bsisoftware/scout-maven-chrome:mvn-3.9.9-node-22.13.0-java-24
-
+    runs-on: ubuntu-latest
+    container: bsisoftware/scout-maven-chrome:mvn-3.9.9-node-22.13.0-java-24
     steps:
     - uses: actions/checkout@v4
     - name: Build with Maven
